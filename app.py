@@ -199,131 +199,229 @@ def process_all_data(settings_manager=None, force_recalc=False):
         # ============================================================
         # 🔍 ДИАГНОСТИКА: ПРОВЕРКА ДАТЫ ЧЕККЕРА НА ВСЕХ ЭТАПАХ
         # ============================================================
+
         if 'портал' in st.session_state.cleaned_data and not st.session_state.cleaned_data['портал'].empty:
-            portal_df = st.session_state.cleaned_data['портал']
+            portal_df = st.session_state.cleaned_data['портал'].copy()
             
-            # Ищем колонку статуса
+            # 1. Ищем колонки
             status_col = None
-            for col in portal_df.columns:
-                if 'статус' in col.lower():
-                    status_col = col
-                    break
+            code_col = None
+            date_col = None
+            region_col = None
+            asm_col = None
+            rs_col = None
             
-            if status_col:
+            for col in portal_df.columns:
+                col_lower = col.lower()
+                if 'статус' in col_lower:
+                    status_col = col
+                elif 'код анкеты' in col_lower or 'project code' in col_lower:
+                    code_col = col
+                elif 'дата визита' in col_lower or 'date of visit' in col_lower:
+                    date_col = col
+                elif col == 'Регион':
+                    region_col = col
+                elif col == 'АСС':
+                    asm_col = col
+                elif col == 'ЭМ' or col == 'RS':
+                    rs_col = col
+            
+            # 2. Проверяем, что все колонки найдены
+            if all([status_col, code_col, date_col, region_col, asm_col, rs_col]):
+                
+                # 3. Фильтруем записи со статусом "Выполнено"
                 completed_mask = portal_df[status_col].astype(str).str.strip() == 'Выполнено'
-                completed_rows = portal_df[completed_mask]
+                completed_rows = portal_df[completed_mask].copy()
                 
                 if not completed_rows.empty:
-                    # Берем первую запись
-                    sample_row = completed_rows.iloc[0]
                     
-                    # Ищем колонку с кодом анкеты
-                    code_col = None
-                    for col in portal_df.columns:
-                        if 'код анкеты' in col.lower() or 'project code' in col.lower():
-                            code_col = col
-                            break
+                    # 4. Приводим дату к datetime для фильтрации
+                    completed_rows[date_col] = pd.to_datetime(completed_rows[date_col], errors='coerce')
                     
-                    # Ищем колонку с датой визита
-                    date_col = None
-                    for col in portal_df.columns:
-                        if 'дата визита' in col.lower() or 'date' in col.lower():
-                            date_col = col
-                            break
+                    # 5. Исключаем записи, где день == месяц (чтобы избежать маскировки)
+                    valid_mask = completed_rows[date_col].dt.day != completed_rows[date_col].dt.month
+                    filtered_rows = completed_rows[valid_mask]
                     
-                    sample_code = sample_row[code_col] if code_col else None
+                    if filtered_rows.empty:
+                        st.warning("⚠️ Нет записей с day != month. Диагностика может быть неточной.")
+                        sample_rows = completed_rows
+                    else:
+                        sample_rows = filtered_rows
+                    
+                    # 6. Группируем по уникальному идентификатору (комбинация полей)
+                    # Создаем уникальный ключ для каждой записи
+                    sample_rows['_unique_key'] = (
+                        sample_rows[code_col].astype(str).str.strip() + '|' +
+                        sample_rows[date_col].dt.strftime('%Y-%m-%d %H:%M:%S') + '|' +
+                        sample_rows[region_col].astype(str).str.strip() + '|' +
+                        sample_rows[asm_col].astype(str).str.strip() + '|' +
+                        sample_rows[rs_col].astype(str).str.strip()
+                    )
+                    
+                    # Берем ПЕРВУЮ запись с уникальным ключом
+                    sample_row = sample_rows.iloc[0]
+                    sample_key = sample_row['_unique_key']
+                    sample_code = sample_row[code_col]
                     
                     st.write("=" * 80)
-                    st.write("🔍 ДИАГНОСТИКА ДАТЫ ЧЕККЕРА")
+                    st.write("🔍 ДИАГНОСТИКА ДАТ ЧЕККЕРА (ФИНАЛЬНАЯ)")
                     st.write(f"  Код анкеты: {sample_code}")
+                    st.write(f"  Уникальный ключ: {sample_key[:100]}...")
+                    st.write(f"  Всего записей со статусом 'Выполнено': {len(completed_rows)}")
+                    st.write(f"  Из них с day != month: {len(filtered_rows)}")
                     st.write("=" * 80)
                     
                     # --- ЭТАП 1: После clean_array ---
-                    if date_col:
-                        raw_date = sample_row[date_col]
-                        st.write("### 1. После clean_array (в cleaned_data['портал'])")
-                        st.write(f"  - Значение: {raw_date}")
-                        st.write(f"  - Тип: {type(raw_date).__name__}")
-                        if hasattr(raw_date, 'strftime'):
-                            st.write(f"  - Дата: {raw_date.strftime('%Y-%m-%d %H:%M:%S')}")
-                            st.write(f"  - День: {raw_date.day}, Месяц: {raw_date.month}, Год: {raw_date.year}")
-                        elif hasattr(raw_date, 'date'):
-                            st.write(f"  - Дата: {raw_date.date()}")
-                        else:
-                            st.write(f"  - НЕ РАСПОЗНАНА КАК ДАТА!")
+                    raw_date = sample_row[date_col]
+                    st.write("### 1. После clean_array (в cleaned_data['портал'])")
+                    st.write(f"  - Значение: {raw_date}")
+                    st.write(f"  - Тип: {type(raw_date).__name__}")
+                    if hasattr(raw_date, 'strftime'):
+                        st.write(f"  - Дата: {raw_date.strftime('%Y-%m-%d %H:%M:%S')}")
+                        st.write(f"  - День: {raw_date.day}, Месяц: {raw_date.month}, Год: {raw_date.year}")
+                        st.write(f"  - Excel-сериал: {raw_date.toordinal() - 693594}")
                     
                     # --- ЭТАП 2: После enrich_array_with_project_codes ---
-                    # Проверяем, существует ли enriched_array (может быть не определена)
                     enriched_exists = 'enriched_array' in locals() and enriched_array is not None
-                    if enriched_exists and code_col and date_col and sample_code is not None:
-                        enriched_mask = enriched_array[code_col].astype(str).str.strip() == str(sample_code).strip()
-                        enriched_row = enriched_array[enriched_mask]
+                    if enriched_exists and code_col and date_col:
+                        # Ищем ПОЛНОЕ СОВПАДЕНИЕ по уникальному ключу
+                        # Сначала создаем ключи в enriched_array
+                        enriched_array['_temp_key'] = (
+                            enriched_array[code_col].astype(str).str.strip() + '|' +
+                            pd.to_datetime(enriched_array[date_col], errors='coerce').dt.strftime('%Y-%m-%d %H:%M:%S') + '|' +
+                            enriched_array[region_col].astype(str).str.strip() + '|' +
+                            enriched_array[asm_col].astype(str).str.strip() + '|' +
+                            enriched_array[rs_col].astype(str).str.strip()
+                        )
                         
-                        if not enriched_row.empty:
-                            enriched_date = enriched_row.iloc[0][date_col]
+                        # Ищем точное совпадение по ключу
+                        enriched_mask = enriched_array['_temp_key'] == sample_key
+                        enriched_rows = enriched_array[enriched_mask]
+                        
+                        if not enriched_rows.empty:
+                            enriched_date = enriched_rows.iloc[0][date_col]
                             st.write("### 2. После enrich_array_with_project_codes")
+                            st.write(f"  - Найдено записей: {len(enriched_rows)}")
                             st.write(f"  - Значение: {enriched_date}")
                             st.write(f"  - Тип: {type(enriched_date).__name__}")
                             if hasattr(enriched_date, 'strftime'):
                                 st.write(f"  - Дата: {enriched_date.strftime('%Y-%m-%d %H:%M:%S')}")
                                 st.write(f"  - День: {enriched_date.day}, Месяц: {enriched_date.month}, Год: {enriched_date.year}")
+                                st.write(f"  - Excel-сериал: {enriched_date.toordinal() - 693594}")
+                        else:
+                            st.error("❌ Запись не найдена в enriched_array!")
+                            st.write("  Возможные причины:")
+                            st.write("    - Код анкеты был изменен при обогащении")
+                            st.write("    - Запись была удалена фильтрами")
+                        
+                        # Удаляем временную колонку
+                        enriched_array = enriched_array.drop('_temp_key', axis=1)
                     
                     # --- ЭТАП 3: После add_field_flag_to_array + add_portal_to_array ---
                     if 'портал_с_полем' in st.session_state.cleaned_data:
-                        portal_with_field = st.session_state.cleaned_data['портал_с_полем']
-                        if not portal_with_field.empty and code_col and date_col and sample_code is not None:
-                            field_mask = portal_with_field[code_col].astype(str).str.strip() == str(sample_code).strip()
-                            field_row = portal_with_field[field_mask]
+                        portal_with_field = st.session_state.cleaned_data['портал_с_полем'].copy()
+                        if not portal_with_field.empty:
+                            # Создаем ключи в portal_with_field
+                            portal_with_field['_temp_key'] = (
+                                portal_with_field[code_col].astype(str).str.strip() + '|' +
+                                pd.to_datetime(portal_with_field[date_col], errors='coerce').dt.strftime('%Y-%m-%d %H:%M:%S') + '|' +
+                                portal_with_field[region_col].astype(str).str.strip() + '|' +
+                                portal_with_field[asm_col].astype(str).str.strip() + '|' +
+                                portal_with_field[rs_col].astype(str).str.strip()
+                            )
                             
-                            if not field_row.empty:
-                                field_date = field_row.iloc[0][date_col]
+                            field_mask = portal_with_field['_temp_key'] == sample_key
+                            field_rows = portal_with_field[field_mask]
+                            
+                            if not field_rows.empty:
+                                field_date = field_rows.iloc[0][date_col]
                                 st.write("### 3. После add_field_flag_to_array + add_portal_to_array")
+                                st.write(f"  - Найдено записей: {len(field_rows)}")
                                 st.write(f"  - Значение: {field_date}")
                                 st.write(f"  - Тип: {type(field_date).__name__}")
                                 if hasattr(field_date, 'strftime'):
                                     st.write(f"  - Дата: {field_date.strftime('%Y-%m-%d %H:%M:%S')}")
                                     st.write(f"  - День: {field_date.day}, Месяц: {field_date.month}, Год: {field_date.year}")
+                                    st.write(f"  - Excel-сериал: {field_date.toordinal() - 693594}")
+                            else:
+                                st.error("❌ Запись не найдена в портал_с_полем!")
+                            
+                            portal_with_field = portal_with_field.drop('_temp_key', axis=1)
                     
                     # --- ЭТАП 4: После split_array_by_field_flag (в полевые_проекты) ---
                     if 'полевые_проекты' in st.session_state.cleaned_data:
-                        field_projects = st.session_state.cleaned_data['полевые_проекты']
-                        if not field_projects.empty and code_col and date_col and sample_code is not None:
-                            proj_mask = field_projects[code_col].astype(str).str.strip() == str(sample_code).strip()
-                            proj_row = field_projects[proj_mask]
+                        field_projects = st.session_state.cleaned_data['полевые_проекты'].copy()
+                        if not field_projects.empty:
+                            # Создаем ключи в field_projects
+                            field_projects['_temp_key'] = (
+                                field_projects[code_col].astype(str).str.strip() + '|' +
+                                pd.to_datetime(field_projects[date_col], errors='coerce').dt.strftime('%Y-%m-%d %H:%M:%S') + '|' +
+                                field_projects[region_col].astype(str).str.strip() + '|' +
+                                field_projects[asm_col].astype(str).str.strip() + '|' +
+                                field_projects[rs_col].astype(str).str.strip()
+                            )
                             
-                            if not proj_row.empty:
-                                proj_date = proj_row.iloc[0][date_col]
+                            proj_mask = field_projects['_temp_key'] == sample_key
+                            proj_rows = field_projects[proj_mask]
+                            
+                            if not proj_rows.empty:
+                                proj_date = proj_rows.iloc[0][date_col]
                                 st.write("### 4. После split_array_by_field_flag (в полевые_проекты)")
+                                st.write(f"  - Найдено записей: {len(proj_rows)}")
                                 st.write(f"  - Значение: {proj_date}")
                                 st.write(f"  - Тип: {type(proj_date).__name__}")
                                 if hasattr(proj_date, 'strftime'):
                                     st.write(f"  - Дата: {proj_date.strftime('%Y-%m-%d %H:%M:%S')}")
                                     st.write(f"  - День: {proj_date.day}, Месяц: {proj_date.month}, Год: {proj_date.year}")
+                                    st.write(f"  - Excel-сериал: {proj_date.toordinal() - 693594}")
+                            else:
+                                st.error("❌ Запись не найдена в полевые_проекты!")
+                            
+                            field_projects = field_projects.drop('_temp_key', axis=1)
                     
                     # --- ЭТАП 5: После объединения всех источников ---
                     if 'полевые_проекты' in st.session_state.cleaned_data:
-                        all_field = st.session_state.cleaned_data['полевые_проекты']
-                        if not all_field.empty and code_col and date_col and sample_code is not None:
-                            all_mask = all_field[code_col].astype(str).str.strip() == str(sample_code).strip()
-                            all_row = all_field[all_mask]
+                        all_field = st.session_state.cleaned_data['полевые_проекты'].copy()
+                        if not all_field.empty:
+                            # Создаем ключи в all_field
+                            all_field['_temp_key'] = (
+                                all_field[code_col].astype(str).str.strip() + '|' +
+                                pd.to_datetime(all_field[date_col], errors='coerce').dt.strftime('%Y-%m-%d %H:%M:%S') + '|' +
+                                all_field[region_col].astype(str).str.strip() + '|' +
+                                all_field[asm_col].astype(str).str.strip() + '|' +
+                                all_field[rs_col].astype(str).str.strip()
+                            )
                             
-                            if not all_row.empty:
-                                all_date = all_row.iloc[0][date_col]
+                            all_mask = all_field['_temp_key'] == sample_key
+                            all_rows = all_field[all_mask]
+                            
+                            if not all_rows.empty:
+                                all_date = all_rows.iloc[0][date_col]
                                 st.write("### 5. После объединения всех источников (в полевые_проекты)")
+                                st.write(f"  - Найдено записей: {len(all_rows)}")
                                 st.write(f"  - Значение: {all_date}")
                                 st.write(f"  - Тип: {type(all_date).__name__}")
                                 if hasattr(all_date, 'strftime'):
                                     st.write(f"  - Дата: {all_date.strftime('%Y-%m-%d %H:%M:%S')}")
                                     st.write(f"  - День: {all_date.day}, Месяц: {all_date.month}, Год: {all_date.year}")
+                                    st.write(f"  - Excel-сериал: {all_date.toordinal() - 693594}")
+                            else:
+                                st.error("❌ Запись не найдена в объединенных данных!")
+                            
+                            all_field = all_field.drop('_temp_key', axis=1)
                     
-                    # --- ЭТАП 6: ВНИМАНИЕ про иерархию ---
+                    # --- ЭТАП 6: Информация об иерархии ---
                     st.write("### 6. ВНИМАНИЕ: В base_data (иерархия) даты берутся ИЗ GOOGLE, а не из чеккера!")
                     st.write("  - Дата визита чеккера НЕ УЧАСТВУЕТ в иерархии")
                     st.write("  - В иерархию попадают: Дата старта и Дата финиша из Google-таблицы")
                     
-                    # Сохраняем данные для дальнейшей диагностики (в факте)
-                    st.session_state._diagnostic_code = sample_code
+                    # Сохраняем данные для диагностики в факте
+                    st.session_state._diagnostic_sample_key = sample_key
+                    st.session_state._diagnostic_code_col = code_col
                     st.session_state._diagnostic_date_col = date_col
+                    st.session_state._diagnostic_region_col = region_col
+                    st.session_state._diagnostic_asm_col = asm_col
+                    st.session_state._diagnostic_rs_col = rs_col
                     st.session_state._diagnostic_completed = True
                     
                     st.write("=" * 80)
@@ -332,7 +430,14 @@ def process_all_data(settings_manager=None, force_recalc=False):
                 else:
                     st.warning("⚠️ Нет записей со статусом 'Выполнено' в Чеккере")
             else:
-                st.warning("⚠️ Не найдена колонка со статусом в Чеккере")
+                st.warning("⚠️ Не найдены все необходимые колонки в Чеккере")
+                st.write("Найдены:")
+                st.write(f"  - status_col: {status_col}")
+                st.write(f"  - code_col: {code_col}")
+                st.write(f"  - date_col: {date_col}")
+                st.write(f"  - region_col: {region_col}")
+                st.write(f"  - asm_col: {asm_col}")
+                st.write(f"  - rs_col: {rs_col}")
         # ============================================================
 
         
