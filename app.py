@@ -212,7 +212,9 @@ def process_all_data(settings_manager=None, force_recalc=False):
             rs_col = None
             
             for col in portal_df.columns:
+                col_clean = col.strip()
                 col_lower = col.lower()
+                
                 if 'статус' in col_lower:
                     status_col = col
                 elif 'код анкеты' in col_lower or 'project code' in col_lower:
