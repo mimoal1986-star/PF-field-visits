@@ -196,6 +196,145 @@ def process_all_data(settings_manager=None, force_recalc=False):
         else:
             st.session_state.cleaned_data['портал'] = pd.DataFrame()
 
+        # ============================================================
+        # 🔍 ДИАГНОСТИКА: ПРОВЕРКА ДАТЫ ЧЕККЕРА НА ВСЕХ ЭТАПАХ
+        # ============================================================
+        if 'портал' in st.session_state.cleaned_data and not st.session_state.cleaned_data['портал'].empty:
+            portal_df = st.session_state.cleaned_data['портал']
+            
+            # Ищем колонку статуса
+            status_col = None
+            for col in portal_df.columns:
+                if 'статус' in col.lower():
+                    status_col = col
+                    break
+            
+            if status_col:
+                completed_mask = portal_df[status_col].astype(str).str.strip() == 'Выполнено'
+                completed_rows = portal_df[completed_mask]
+                
+                if not completed_rows.empty:
+                    # Берем первую запись
+                    sample_row = completed_rows.iloc[0]
+                    
+                    # Ищем колонку с кодом анкеты
+                    code_col = None
+                    for col in portal_df.columns:
+                        if 'код анкеты' in col.lower() or 'project code' in col.lower():
+                            code_col = col
+                            break
+                    
+                    # Ищем колонку с датой визита
+                    date_col = None
+                    for col in portal_df.columns:
+                        if 'дата визита' in col.lower() or 'date' in col.lower():
+                            date_col = col
+                            break
+                    
+                    sample_code = sample_row[code_col] if code_col else None
+                    
+                    st.write("=" * 80)
+                    st.write("🔍 ДИАГНОСТИКА ДАТЫ ЧЕККЕРА")
+                    st.write(f"  Код анкеты: {sample_code}")
+                    st.write("=" * 80)
+                    
+                    # --- ЭТАП 1: После clean_array ---
+                    if date_col:
+                        raw_date = sample_row[date_col]
+                        st.write("### 1. После clean_array (в cleaned_data['портал'])")
+                        st.write(f"  - Значение: {raw_date}")
+                        st.write(f"  - Тип: {type(raw_date).__name__}")
+                        if hasattr(raw_date, 'strftime'):
+                            st.write(f"  - Дата: {raw_date.strftime('%Y-%m-%d %H:%M:%S')}")
+                            st.write(f"  - День: {raw_date.day}, Месяц: {raw_date.month}, Год: {raw_date.year}")
+                        elif hasattr(raw_date, 'date'):
+                            st.write(f"  - Дата: {raw_date.date()}")
+                        else:
+                            st.write(f"  - НЕ РАСПОЗНАНА КАК ДАТА!")
+                    
+                    # --- ЭТАП 2: После enrich_array_with_project_codes ---
+                    # Проверяем, существует ли enriched_array (может быть не определена)
+                    enriched_exists = 'enriched_array' in locals() and enriched_array is not None
+                    if enriched_exists and code_col and date_col and sample_code is not None:
+                        enriched_mask = enriched_array[code_col].astype(str).str.strip() == str(sample_code).strip()
+                        enriched_row = enriched_array[enriched_mask]
+                        
+                        if not enriched_row.empty:
+                            enriched_date = enriched_row.iloc[0][date_col]
+                            st.write("### 2. После enrich_array_with_project_codes")
+                            st.write(f"  - Значение: {enriched_date}")
+                            st.write(f"  - Тип: {type(enriched_date).__name__}")
+                            if hasattr(enriched_date, 'strftime'):
+                                st.write(f"  - Дата: {enriched_date.strftime('%Y-%m-%d %H:%M:%S')}")
+                                st.write(f"  - День: {enriched_date.day}, Месяц: {enriched_date.month}, Год: {enriched_date.year}")
+                    
+                    # --- ЭТАП 3: После add_field_flag_to_array + add_portal_to_array ---
+                    if 'портал_с_полем' in st.session_state.cleaned_data:
+                        portal_with_field = st.session_state.cleaned_data['портал_с_полем']
+                        if not portal_with_field.empty and code_col and date_col and sample_code is not None:
+                            field_mask = portal_with_field[code_col].astype(str).str.strip() == str(sample_code).strip()
+                            field_row = portal_with_field[field_mask]
+                            
+                            if not field_row.empty:
+                                field_date = field_row.iloc[0][date_col]
+                                st.write("### 3. После add_field_flag_to_array + add_portal_to_array")
+                                st.write(f"  - Значение: {field_date}")
+                                st.write(f"  - Тип: {type(field_date).__name__}")
+                                if hasattr(field_date, 'strftime'):
+                                    st.write(f"  - Дата: {field_date.strftime('%Y-%m-%d %H:%M:%S')}")
+                                    st.write(f"  - День: {field_date.day}, Месяц: {field_date.month}, Год: {field_date.year}")
+                    
+                    # --- ЭТАП 4: После split_array_by_field_flag (в полевые_проекты) ---
+                    if 'полевые_проекты' in st.session_state.cleaned_data:
+                        field_projects = st.session_state.cleaned_data['полевые_проекты']
+                        if not field_projects.empty and code_col and date_col and sample_code is not None:
+                            proj_mask = field_projects[code_col].astype(str).str.strip() == str(sample_code).strip()
+                            proj_row = field_projects[proj_mask]
+                            
+                            if not proj_row.empty:
+                                proj_date = proj_row.iloc[0][date_col]
+                                st.write("### 4. После split_array_by_field_flag (в полевые_проекты)")
+                                st.write(f"  - Значение: {proj_date}")
+                                st.write(f"  - Тип: {type(proj_date).__name__}")
+                                if hasattr(proj_date, 'strftime'):
+                                    st.write(f"  - Дата: {proj_date.strftime('%Y-%m-%d %H:%M:%S')}")
+                                    st.write(f"  - День: {proj_date.day}, Месяц: {proj_date.month}, Год: {proj_date.year}")
+                    
+                    # --- ЭТАП 5: После объединения всех источников ---
+                    if 'полевые_проекты' in st.session_state.cleaned_data:
+                        all_field = st.session_state.cleaned_data['полевые_проекты']
+                        if not all_field.empty and code_col and date_col and sample_code is not None:
+                            all_mask = all_field[code_col].astype(str).str.strip() == str(sample_code).strip()
+                            all_row = all_field[all_mask]
+                            
+                            if not all_row.empty:
+                                all_date = all_row.iloc[0][date_col]
+                                st.write("### 5. После объединения всех источников (в полевые_проекты)")
+                                st.write(f"  - Значение: {all_date}")
+                                st.write(f"  - Тип: {type(all_date).__name__}")
+                                if hasattr(all_date, 'strftime'):
+                                    st.write(f"  - Дата: {all_date.strftime('%Y-%m-%d %H:%M:%S')}")
+                                    st.write(f"  - День: {all_date.day}, Месяц: {all_date.month}, Год: {all_date.year}")
+                    
+                    # --- ЭТАП 6: ВНИМАНИЕ про иерархию ---
+                    st.write("### 6. ВНИМАНИЕ: В base_data (иерархия) даты берутся ИЗ GOOGLE, а не из чеккера!")
+                    st.write("  - Дата визита чеккера НЕ УЧАСТВУЕТ в иерархии")
+                    st.write("  - В иерархию попадают: Дата старта и Дата финиша из Google-таблицы")
+                    
+                    # Сохраняем данные для дальнейшей диагностики (в факте)
+                    st.session_state._diagnostic_code = sample_code
+                    st.session_state._diagnostic_date_col = date_col
+                    st.session_state._diagnostic_completed = True
+                    
+                    st.write("=" * 80)
+                    st.write("🔍 ДИАГНОСТИКА ЗАВЕРШЕНА (этапы 1-5)")
+                    st.write("=" * 80)
+                else:
+                    st.warning("⚠️ Нет записей со статусом 'Выполнено' в Чеккере")
+            else:
+                st.warning("⚠️ Не найдена колонка со статусом в Чеккере")
+        # ============================================================
+
         
         # ОБОГАЩЕНИЕ ДАННЫХ (ОПТИМИЗИРОВАННО)
         
