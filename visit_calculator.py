@@ -910,11 +910,6 @@ class VisitCalculator:
                     if project_code not in multon_regions:
                         multon_regions[project_code] = set()
                     multon_regions[project_code].add(region)
-                
-                if po == 'ПО клиента' and client == 'Мултон':
-                    if project_code not in multon_regions:
-                        multon_regions[project_code] = set()
-                    multon_regions[project_code].add(region)
 
                 elif po == 'Мониторинги':
                     if project_code not in prodata_regions:
@@ -981,6 +976,11 @@ class VisitCalculator:
                 po = row['ПО']
                 client = row['Клиент']
                 rs_name = row['RS']
+
+                asm = row['ASM']
+                is_target = (project_code == TARGET_PROJECT and 
+                             region == TARGET_REGION and 
+                             asm == TARGET_ASM)
 
                 # ПРОВЕРКА ДАТ
                 start_date = row['Дата старта']
@@ -1652,6 +1652,36 @@ class VisitCalculator:
                     result_df.at[idx, 'Оплата факт'] = payment_sum.get(key, 0)
                 else:
                     result_df.at[idx, f'Оплата{suffix}'] = payment_sum.get(key, 0)
+            # ============================================================
+            # 🔍 ДИАГНОСТИКА ДАТ ЧЕККЕР
+            # ============================================================
+            if hasattr(st.session_state, '_diagnostic_completed') and st.session_state._diagnostic_completed:
+                diagnostic_code = st.session_state._diagnostic_code
+                diagnostic_date_col = st.session_state._diagnostic_date_col
+                
+                if diagnostic_code is not None and diagnostic_date_col is not None:
+                    code_col = None
+                    for col in visits_df.columns:
+                        if 'код анкеты' in col.lower() or 'project code' in col.lower():
+                            code_col = col
+                            break
+                    
+                    if code_col and diagnostic_date_col in visits_df.columns:
+                        mask = visits_df[code_col].astype(str).str.strip() == str(diagnostic_code).strip()
+                        matched = visits_df[mask]
+                        
+                        if not matched.empty:
+                            fact_date = matched.iloc[0][diagnostic_date_col]
+                            st.write("=" * 80)
+                            st.write("🔍 ДИАГНОСТИКА В ФАКТЕ")
+                            st.write(f"  - Код анкеты: {diagnostic_code}")
+                            st.write(f"  - Дата в visits_df: {fact_date}")
+                            st.write(f"  - Тип: {type(fact_date).__name__}")
+                            if hasattr(fact_date, 'strftime'):
+                                st.write(f"  - Дата: {fact_date.strftime('%Y-%m-%d %H:%M:%S')}")
+                                st.write(f"  - День: {fact_date.day}, Месяц: {fact_date.month}, Год: {fact_date.year}")
+                            st.write("=" * 80)
+            # ============================================================
             
             return result_df
             
