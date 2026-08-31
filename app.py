@@ -1060,7 +1060,7 @@ with tab2:
         st.info("📌 Сначала выполните расчет на вкладке 'Загрузка данных'")
     
     else:
-        tab_projects, tab_regions, tab_dsm, tab_dynamics = st.tabs(["📊 ПФ проекты", "🗺️ Регионы", "👥 DSM", "📈 Динамика"])
+        tab_projects, tab_regions, tab_dsm, tab_dynamics = st.tabs(["📊 ПФ проекты", "🗺️ Регионы", "👥 DSM", "👤 АСМ"])
         
         # Проверяем, есть ли данные для отчета
         if 'calculated_data' in st.session_state.visit_report and st.session_state.visit_report['calculated_data'] is not None:
