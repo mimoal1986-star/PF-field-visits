@@ -196,303 +196,6 @@ def process_all_data(settings_manager=None, force_recalc=False):
         else:
             st.session_state.cleaned_data['портал'] = pd.DataFrame()
 
-        # ============================================================
-        # 🔍 ДИАГНОСТИКА: ПРОВЕРКА ДАТЫ ЧЕККЕРА НА ВСЕХ ЭТАПАХ
-        # ============================================================
-
-        # if 'портал' in st.session_state.cleaned_data and not st.session_state.cleaned_data['портал'].empty:
-        #     portal_df = st.session_state.cleaned_data['портал'].copy()
-            
-        #     # 1. Ищем колонки
-        #     status_col = None
-        #     code_col = None
-        #     date_col = None
-        #     region_col = None
-        #     asm_col = None
-        #     rs_col = None
-            
-        #     for col in portal_df.columns:
-        #         col_clean = col.strip()
-        #         col_lower = col.lower()
-                
-        #         if 'статус' in col_lower:
-        #             status_col = col
-        #         elif 'код анкеты' in col_lower or 'project code' in col_lower:
-        #             code_col = col
-        #         elif 'дата визита' in col_lower or 'date of visit' in col_lower:
-        #             date_col = col
-        #         elif col == 'Регион':
-        #             region_col = col
-        #         elif col == 'АСС':
-        #             asm_col = col
-        #         elif col == 'ЭМ' or col == 'RS':
-        #             rs_col = col
-            
-        #     # 2. Проверяем, что все колонки найдены
-        #     if all([status_col, code_col, date_col, region_col, asm_col, rs_col]):
-                
-        #         # 3. Фильтруем записи со статусом "Выполнено"
-        #         completed_mask = portal_df[status_col].astype(str).str.strip() == 'Выполнено'
-        #         completed_rows = portal_df[completed_mask].copy()
-                
-        #         if not completed_rows.empty:
-                    
-        #             # 4. Приводим дату к datetime для фильтрации
-        #             completed_rows[date_col] = pd.to_datetime(completed_rows[date_col], errors='coerce')
-                    
-        #             # 5. Исключаем записи, где день == месяц (чтобы избежать маскировки)
-        #             valid_mask = completed_rows[date_col].dt.day != completed_rows[date_col].dt.month
-        #             filtered_rows = completed_rows[valid_mask]
-                    
-        #             if filtered_rows.empty:
-        #                 st.warning("⚠️ Нет записей с day != month. Диагностика может быть неточной.")
-        #                 sample_rows = completed_rows
-        #             else:
-        #                 sample_rows = filtered_rows
-                    
-        #             # 6. Группируем по уникальному идентификатору (комбинация полей)
-        #             # Создаем уникальный ключ для каждой записи
-        #             sample_rows['_unique_key'] = (
-        #                 sample_rows[code_col].astype(str).str.strip() + '|' +
-        #                 sample_rows[date_col].dt.strftime('%Y-%m-%d %H:%M:%S') + '|' +
-        #                 sample_rows[region_col].astype(str).str.strip() + '|' +
-        #                 sample_rows[asm_col].astype(str).str.strip() + '|' +
-        #                 sample_rows[rs_col].astype(str).str.strip()
-        #             )
-                    
-        #             # Берем ПЕРВУЮ запись с уникальным ключом
-        #             sample_row = sample_rows.iloc[0]
-        #             sample_key = sample_row['_unique_key']
-        #             sample_code = sample_row[code_col]
-                    
-        #             st.write("=" * 80)
-        #             st.write("🔍 ДИАГНОСТИКА ДАТ ЧЕККЕРА (ФИНАЛЬНАЯ)")
-        #             st.write(f"  Код анкеты: {sample_code}")
-        #             st.write(f"  Уникальный ключ: {sample_key[:100]}...")
-        #             st.write(f"  Всего записей со статусом 'Выполнено': {len(completed_rows)}")
-        #             st.write(f"  Из них с day != month: {len(filtered_rows)}")
-        #             st.write("=" * 80)
-                    
-        #             # --- ЭТАП 1: После clean_array ---
-        #             raw_date = sample_row[date_col]
-        #             st.write("### 1. После clean_array (в cleaned_data['портал'])")
-        #             st.write(f"  - Значение: {raw_date}")
-        #             st.write(f"  - Тип: {type(raw_date).__name__}")
-        #             if hasattr(raw_date, 'strftime'):
-        #                 st.write(f"  - Дата: {raw_date.strftime('%Y-%m-%d %H:%M:%S')}")
-        #                 st.write(f"  - День: {raw_date.day}, Месяц: {raw_date.month}, Год: {raw_date.year}")
-        #                 st.write(f"  - Excel-сериал: {raw_date.toordinal() - 693594}")
-                    
-        #             # --- ЭТАП 2: После enrich_array_with_project_codes ---
-        #             enriched_exists = 'enriched_array' in locals() and enriched_array is not None
-        #             if enriched_exists and code_col and date_col:
-        #                 # Ищем ПОЛНОЕ СОВПАДЕНИЕ по уникальному ключу
-        #                 # Сначала создаем ключи в enriched_array
-        #                 enriched_array['_temp_key'] = (
-        #                     enriched_array[code_col].astype(str).str.strip() + '|' +
-        #                     pd.to_datetime(enriched_array[date_col], errors='coerce').dt.strftime('%Y-%m-%d %H:%M:%S') + '|' +
-        #                     enriched_array[region_col].astype(str).str.strip() + '|' +
-        #                     enriched_array[asm_col].astype(str).str.strip() + '|' +
-        #                     enriched_array[rs_col].astype(str).str.strip()
-        #                 )
-                        
-        #                 # Ищем точное совпадение по ключу
-        #                 enriched_mask = enriched_array['_temp_key'] == sample_key
-        #                 enriched_rows = enriched_array[enriched_mask]
-                        
-        #                 if not enriched_rows.empty:
-        #                     enriched_date = enriched_rows.iloc[0][date_col]
-        #                     st.write("### 2. После enrich_array_with_project_codes")
-        #                     st.write(f"  - Найдено записей: {len(enriched_rows)}")
-        #                     st.write(f"  - Значение: {enriched_date}")
-        #                     st.write(f"  - Тип: {type(enriched_date).__name__}")
-        #                     if hasattr(enriched_date, 'strftime'):
-        #                         st.write(f"  - Дата: {enriched_date.strftime('%Y-%m-%d %H:%M:%S')}")
-        #                         st.write(f"  - День: {enriched_date.day}, Месяц: {enriched_date.month}, Год: {enriched_date.year}")
-        #                         st.write(f"  - Excel-сериал: {enriched_date.toordinal() - 693594}")
-        #                 else:
-        #                     st.error("❌ Запись не найдена в enriched_array!")
-        #                     st.write("  Возможные причины:")
-        #                     st.write("    - Код анкеты был изменен при обогащении")
-        #                     st.write("    - Запись была удалена фильтрами")
-                        
-        #                 # Удаляем временную колонку
-        #                 enriched_array = enriched_array.drop('_temp_key', axis=1)
-                    
-        #             # --- ЭТАП 3: После add_field_flag_to_array + add_portal_to_array ---
-        #             if 'портал_с_полем' in st.session_state.cleaned_data:
-        #                 portal_with_field = st.session_state.cleaned_data['портал_с_полем'].copy()
-        #                 if not portal_with_field.empty:
-        #                     # Создаем ключи в portal_with_field
-        #                     portal_with_field['_temp_key'] = (
-        #                         portal_with_field[code_col].astype(str).str.strip() + '|' +
-        #                         pd.to_datetime(portal_with_field[date_col], errors='coerce').dt.strftime('%Y-%m-%d %H:%M:%S') + '|' +
-        #                         portal_with_field[region_col].astype(str).str.strip() + '|' +
-        #                         portal_with_field[asm_col].astype(str).str.strip() + '|' +
-        #                         portal_with_field[rs_col].astype(str).str.strip()
-        #                     )
-                            
-        #                     field_mask = portal_with_field['_temp_key'] == sample_key
-        #                     field_rows = portal_with_field[field_mask]
-                            
-        #                     if not field_rows.empty:
-        #                         field_date = field_rows.iloc[0][date_col]
-        #                         st.write("### 3. После add_field_flag_to_array + add_portal_to_array")
-        #                         st.write(f"  - Найдено записей: {len(field_rows)}")
-        #                         st.write(f"  - Значение: {field_date}")
-        #                         st.write(f"  - Тип: {type(field_date).__name__}")
-        #                         if hasattr(field_date, 'strftime'):
-        #                             st.write(f"  - Дата: {field_date.strftime('%Y-%m-%d %H:%M:%S')}")
-        #                             st.write(f"  - День: {field_date.day}, Месяц: {field_date.month}, Год: {field_date.year}")
-        #                             st.write(f"  - Excel-сериал: {field_date.toordinal() - 693594}")
-        #                     else:
-        #                         st.error("❌ Запись не найдена в портал_с_полем!")
-                            
-        #                     portal_with_field = portal_with_field.drop('_temp_key', axis=1)
-                    
-        #             # --- ЭТАП 4: После split_array_by_field_flag (в полевые_проекты) ---
-        #             if 'полевые_проекты' in st.session_state.cleaned_data:
-        #                 field_projects = st.session_state.cleaned_data['полевые_проекты'].copy()
-        #                 if not field_projects.empty:
-        #                     # Создаем ключи в field_projects
-        #                     field_projects['_temp_key'] = (
-        #                         field_projects[code_col].astype(str).str.strip() + '|' +
-        #                         pd.to_datetime(field_projects[date_col], errors='coerce').dt.strftime('%Y-%m-%d %H:%M:%S') + '|' +
-        #                         field_projects[region_col].astype(str).str.strip() + '|' +
-        #                         field_projects[asm_col].astype(str).str.strip() + '|' +
-        #                         field_projects[rs_col].astype(str).str.strip()
-        #                     )
-                            
-        #                     proj_mask = field_projects['_temp_key'] == sample_key
-        #                     proj_rows = field_projects[proj_mask]
-                            
-        #                     if not proj_rows.empty:
-        #                         proj_date = proj_rows.iloc[0][date_col]
-        #                         st.write("### 4. После split_array_by_field_flag (в полевые_проекты)")
-        #                         st.write(f"  - Найдено записей: {len(proj_rows)}")
-        #                         st.write(f"  - Значение: {proj_date}")
-        #                         st.write(f"  - Тип: {type(proj_date).__name__}")
-        #                         if hasattr(proj_date, 'strftime'):
-        #                             st.write(f"  - Дата: {proj_date.strftime('%Y-%m-%d %H:%M:%S')}")
-        #                             st.write(f"  - День: {proj_date.day}, Месяц: {proj_date.month}, Год: {proj_date.year}")
-        #                             st.write(f"  - Excel-сериал: {proj_date.toordinal() - 693594}")
-        #                     else:
-        #                         st.error("❌ Запись не найдена в полевые_проекты!")
-                            
-        #                     field_projects = field_projects.drop('_temp_key', axis=1)
-                    
-        #             # --- ЭТАП 5: После объединения всех источников ---
-        #             if 'полевые_проекты' in st.session_state.cleaned_data:
-        #                 all_field = st.session_state.cleaned_data['полевые_проекты'].copy()
-        #                 if not all_field.empty:
-        #                     # Создаем ключи в all_field
-        #                     all_field['_temp_key'] = (
-        #                         all_field[code_col].astype(str).str.strip() + '|' +
-        #                         pd.to_datetime(all_field[date_col], errors='coerce').dt.strftime('%Y-%m-%d %H:%M:%S') + '|' +
-        #                         all_field[region_col].astype(str).str.strip() + '|' +
-        #                         all_field[asm_col].astype(str).str.strip() + '|' +
-        #                         all_field[rs_col].astype(str).str.strip()
-        #                     )
-                            
-        #                     all_mask = all_field['_temp_key'] == sample_key
-        #                     all_rows = all_field[all_mask]
-                            
-        #                     if not all_rows.empty:
-        #                         all_date = all_rows.iloc[0][date_col]
-        #                         st.write("### 5. После объединения всех источников (в полевые_проекты)")
-        #                         st.write(f"  - Найдено записей: {len(all_rows)}")
-        #                         st.write(f"  - Значение: {all_date}")
-        #                         st.write(f"  - Тип: {type(all_date).__name__}")
-        #                         if hasattr(all_date, 'strftime'):
-        #                             st.write(f"  - Дата: {all_date.strftime('%Y-%m-%d %H:%M:%S')}")
-        #                             st.write(f"  - День: {all_date.day}, Месяц: {all_date.month}, Год: {all_date.year}")
-        #                             st.write(f"  - Excel-сериал: {all_date.toordinal() - 693594}")
-        #                     else:
-        #                         st.error("❌ Запись не найдена в объединенных данных!")
-                            
-        #                     all_field = all_field.drop('_temp_key', axis=1)
-                    
-        #             # --- ЭТАП 6: Информация об иерархии ---
-        #             st.write("### 6. ВНИМАНИЕ: В base_data (иерархия) даты берутся ИЗ GOOGLE, а не из чеккера!")
-        #             st.write("  - Дата визита чеккера НЕ УЧАСТВУЕТ в иерархии")
-        #             st.write("  - В иерархию попадают: Дата старта и Дата финиша из Google-таблицы")
-                    
-        #             # Сохраняем данные для диагностики в факте
-        #             st.session_state._diagnostic_sample_key = sample_key
-        #             st.session_state._diagnostic_code_col = code_col
-        #             st.session_state._diagnostic_date_col = date_col
-        #             st.session_state._diagnostic_region_col = region_col
-        #             st.session_state._diagnostic_asm_col = asm_col
-        #             st.session_state._diagnostic_rs_col = rs_col
-        #             st.session_state._diagnostic_completed = True
-                    
-        #             st.write("=" * 80)
-        #             st.write("🔍 ДИАГНОСТИКА ЗАВЕРШЕНА (этапы 1-5)")
-        #             st.write("=" * 80)
-        #         else:
-        #             st.warning("⚠️ Нет записей со статусом 'Выполнено' в Чеккере")
-        #     else:
-        #         st.warning("⚠️ Не найдены все необходимые колонки в Чеккере")
-        #         st.write("Найдены:")
-        #         st.write(f"  - status_col: {status_col}")
-        #         st.write(f"  - code_col: {code_col}")
-        #         st.write(f"  - date_col: {date_col}")
-        #         st.write(f"  - region_col: {region_col}")
-        #         st.write(f"  - asm_col: {asm_col}")
-        #         st.write(f"  - rs_col: {rs_col}")
-        # ============================================================
-        # ============================================================
-        # 🔍 ДИАГНОСТИКА: проверка статусов в Чеккере
-        # ============================================================
-        if 'портал' in st.session_state.cleaned_data and not st.session_state.cleaned_data['портал'].empty:
-            portal_df = st.session_state.cleaned_data['портал']
-            
-            # 1. Ищем колонку статуса (с очисткой от пробелов)
-            status_col = None
-            for col in portal_df.columns:
-                col_clean = col.strip()
-                if 'статус' in col_clean.lower():
-                    status_col = col
-                    break
-            
-            if status_col:
-                st.write("=" * 80)
-                st.write("🔍 ДИАГНОСТИКА СТАТУСОВ В ЧЕККЕРЕ")
-                st.write(f"  Найдена колонка статуса: '{status_col}'")
-                st.write("=" * 80)
-                
-                # 2. Показываем ВСЕ уникальные значения статуса
-                unique_statuses = portal_df[status_col].astype(str).str.strip().unique()
-                st.write("### Все уникальные значения статуса:")
-                st.write(f"  {sorted(unique_statuses)}")
-                
-                # 3. Показываем количество записей для каждого статуса
-                st.write("### Количество записей по статусам:")
-                status_counts = portal_df[status_col].astype(str).str.strip().value_counts()
-                st.dataframe(status_counts.reset_index().rename(columns={'index': 'Статус', status_col: 'Количество'}))
-                
-                # 4. Ищем точное совпадение с 'Выполнено'
-                completed_mask = portal_df[status_col].astype(str).str.strip() == 'Выполнено'
-                completed_count = completed_mask.sum()
-                st.write(f"### Записей со статусом 'Выполнено': {completed_count}")
-                
-                if completed_count > 0:
-                    st.success(f"✅ Найдено {completed_count} записей со статусом 'Выполнено'!")
-                else:
-                    st.error("❌ Нет записей со статусом 'Выполнено'")
-                    st.write("💡 Возможные причины:")
-                    st.write("  - Статус записан с другой раскладкой (например, 'Выполнена')")
-                    st.write("  - Статус записан с пробелами (например, ' Выполнено')")
-                    st.write("  - Статус записан на английском (например, 'Completed')")
-                    st.write("  - Статус записан с другими символами")
-                
-                st.write("=" * 80)
-            else:
-                st.error("❌ Колонка статуса не найдена!")
-                st.write("Доступные колонки:")
-                st.write(list(portal_df.columns))
-        # ============================================================
-
         
         # ОБОГАЩЕНИЕ ДАННЫХ (ОПТИМИЗИРОВАННО)
         
@@ -961,37 +664,13 @@ def process_all_data(settings_manager=None, force_recalc=False):
         import time as tm
         start_hier = tm.time()
         # st.write(f"🔍 НАЧАЛО ИЕРАРХИИ: {tm.time() - start_total:.2f} сек от старта")
-        
-        # ✅ ДИАГНОСТИКА ПЕРЕД ИЕРАРХИЕЙ
-        st.write(f"📊 ПОЛЕВЫЕ_ПРОЕКТЫ ПЕРЕД ИЕРАРХИЕЙ:")
-        st.write(f"  строк: {len(st.session_state.cleaned_data['полевые_проекты'])}")
-        if not st.session_state.cleaned_data['полевые_проекты'].empty:
-            if 'Источник' in st.session_state.cleaned_data['полевые_проекты'].columns:
-                st.write(f"  Источники: {st.session_state.cleaned_data['полевые_проекты']['Источник'].unique()}")
-            if 'Полевой' in st.session_state.cleaned_data['полевые_проекты'].columns:
-                st.write(f"  Полевой == 1: {(st.session_state.cleaned_data['полевые_проекты']['Полевой'] == 1).sum()}")
-        st.write("---")
-        
+                
         base_data = visit_calculator.extract_hierarchical_data(
             st.session_state.cleaned_data['полевые_проекты'],
             st.session_state.cleaned_data['сервизория'],
             st.session_state.cleaned_data.get('сервизория_original')
         )
         
-        # ========== ВЫГРУЗКА base_data ==========
-        output = BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            base_data.to_excel(writer, sheet_name='base_data', index=False)
-        
-        st.download_button(
-            label="📥 Скачать base_data (иерархия)",
-            data=output.getvalue(),
-            file_name=f"base_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            key="download_base_data"
-        )
-        # ===========================================
-
         # st.write(f"🔍 КОНЕЦ ИЕРАРХИИ: {tm.time() - start_hier:.2f} сек (время выполнения)")
         # st.write(f"🔍 ВСЕГО СТРОК В ИЕРАРХИИ: {len(base_data)}")
         
@@ -1000,19 +679,6 @@ def process_all_data(settings_manager=None, force_recalc=False):
 
         st.session_state.debug_times.append(f"[DEBUG] Иерархия: {time.time() - start:.2f} сек")
         start = time.time()
-
-        # ========== ДИАГНОСТИКА ПЕРЕД РАСЧЕТОМ ==========
-        st.write("### 🔍 ДИАГНОСТИКА В process_all_data")
-        st.write(f"1. plan_calc_params: {st.session_state.plan_calc_params is not None}")
-        if st.session_state.plan_calc_params:
-            st.write(f"   - start_date: {st.session_state.plan_calc_params.get('start_date')}")
-            st.write(f"   - end_date: {st.session_state.plan_calc_params.get('end_date')}")
-        st.write(f"2. base_data: {base_data is not None}")
-        if base_data is not None:
-            st.write(f"   - empty: {base_data.empty}")
-            st.write(f"   - len: {len(base_data)}")
-        st.markdown("---")
-        # ==============================================
         
 
         # Расчет план/факт
@@ -1034,22 +700,20 @@ def process_all_data(settings_manager=None, force_recalc=False):
                     region_coeffs = region_coeff_manager.load_coefficients()
                     plan_result = visit_calculator.add_plan_payment(plan_result, bdr_df, region_coeffs)
 
-            # ✅ ВЫГРУЗКА: plan_result
-            if plan_result is not None and not plan_result.empty:
-                output = BytesIO()
-                with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                    plan_result.to_excel(writer, sheet_name='plan_result', index=False)
-                st.download_button(
-                    label="📥 Скачать plan_result",
-                    data=output.getvalue(),
-                    file_name=f"plan_result_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    key="download_plan_result"
-                )
-            else:
-                st.warning("⚠️ plan_result ПУСТОЙ!")
-            # ===================================
-
+            # # ✅ ВЫГРУЗКА: plan_result
+            # if plan_result is not None and not plan_result.empty:
+            #     output = BytesIO()
+            #     with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            #         plan_result.to_excel(writer, sheet_name='plan_result', index=False)
+            #     st.download_button(
+            #         label="📥 Скачать plan_result",
+            #         data=output.getvalue(),
+            #         file_name=f"plan_result_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+            #         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            #         key="download_plan_result"
+            #     )
+            # else:
+            #     st.warning("⚠️ plan_result ПУСТОЙ!")
             
             st.session_state.debug_times.append(f"[DEBUG] План: {time.time() - start:.2f} сек")
             start = time.time()
@@ -1059,20 +723,20 @@ def process_all_data(settings_manager=None, force_recalc=False):
                     plan_result, source_df, params, status_filter='completed'
                 )
                 
-                # ✅ ВЫГРУЗКА: fact_result
-                if fact_result is not None and not fact_result.empty:
-                    output = BytesIO()
-                    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                        fact_result.to_excel(writer, sheet_name='fact_result', index=False)
-                    st.download_button(
-                        label="📥 Скачать fact_result",
-                        data=output.getvalue(),
-                        file_name=f"fact_result_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        key="download_fact_result"
-                    )
-                else:
-                    st.warning("⚠️ fact_result ПУСТОЙ!")
+                # # ✅ ВЫГРУЗКА: fact_result
+                # if fact_result is not None and not fact_result.empty:
+                #     output = BytesIO()
+                #     with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                #         fact_result.to_excel(writer, sheet_name='fact_result', index=False)
+                #     st.download_button(
+                #         label="📥 Скачать fact_result",
+                #         data=output.getvalue(),
+                #         file_name=f"fact_result_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                #         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                #         key="download_fact_result"
+                #     )
+                # else:
+                #     st.warning("⚠️ fact_result ПУСТОЙ!")
 
 
                 # Факт по порученным
@@ -1390,34 +1054,7 @@ with tab1:
             st.button("🚀 РАССЧИТАТЬ ПЛАН/ФАКТ", type="primary", width='stretch', disabled=True)
             
 with tab2:
-    st.title("📈 Отчеты по полевым визитам")
-    # ========== ДИАГНОСТИКА ==========
-    st.write("### 🔍 Диагностика перед отчетами")
-    
-    # 1. Проверяем data_calculated
-    st.write(f"1. data_calculated: {st.session_state.get('data_calculated', False)}")
-    
-    # 2. Проверяем visit_report
-    st.write(f"2. visit_report keys: {list(st.session_state.visit_report.keys()) if 'visit_report' in st.session_state else 'НЕТ visit_report'}")
-    
-    # 3. Проверяем calculated_data
-    if 'calculated_data' in st.session_state.visit_report:
-        calculated_data = st.session_state.visit_report['calculated_data']
-        st.write(f"3. calculated_data существует: {calculated_data is not None}")
-        if calculated_data is not None:
-            st.write(f"   - Тип: {type(calculated_data)}")
-            st.write(f"   - Пустой: {calculated_data.empty if hasattr(calculated_data, 'empty') else 'N/A'}")
-            st.write(f"   - Размер: {len(calculated_data) if hasattr(calculated_data, '__len__') else 'N/A'}")
-            if hasattr(calculated_data, 'columns'):
-                st.write(f"   - Колонки: {list(calculated_data.columns)}")
-        else:
-            st.write("   ❌ calculated_data = None")
-    else:
-        st.write("❌ calculated_data НЕТ в visit_report")
-    
-    st.markdown("---")
-    # ========== КОНЕЦ ДИАГНОСТИКИ ==========
-    
+    st.title("📈 Отчеты по полевым визитам")    
 
     if not st.session_state.get('data_calculated', False):
         st.info("📌 Сначала выполните расчет на вкладке 'Загрузка данных'")
@@ -1464,35 +1101,35 @@ with tab2:
             # Если данных нет — показываем сообщение
             st.info("📊 Нет данных для отображения. Выполните расчет на вкладке 'Загрузка данных'.")
 
-# ============================================
-# ВЫГРУЗКА ПОЛЕВЫХ ПРОЕКТОВ
-# ============================================
-if st.session_state.cleaned_data.get('полевые_проекты') is not None:
-    st.markdown("---")
-    st.subheader("📥 Выгрузка данных")
+# # ============================================
+# # ВЫГРУЗКА ПОЛЕВЫХ ПРОЕКТОВ
+# # ============================================
+# if st.session_state.cleaned_data.get('полевые_проекты') is not None:
+#     st.markdown("---")
+#     st.subheader("📥 Выгрузка данных")
     
-    field_projects_df = st.session_state.cleaned_data['полевые_проекты']
+#     field_projects_df = st.session_state.cleaned_data['полевые_проекты']
     
     
-    # Исключаем ПроДата из выгрузки
-    if 'Источник' in field_projects_df.columns:
-        field_projects_df = field_projects_df[field_projects_df['Источник'] != 'Мониторинги']
+#     # Исключаем ПроДата из выгрузки
+#     if 'Источник' in field_projects_df.columns:
+#         field_projects_df = field_projects_df[field_projects_df['Источник'] != 'Мониторинги']
     
-    if not field_projects_df.empty:
-        output = BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            field_projects_df.to_excel(writer, sheet_name='Полевые_проекты', index=False)
+#     if not field_projects_df.empty:
+#         output = BytesIO()
+#         with pd.ExcelWriter(output, engine='openpyxl') as writer:
+#             field_projects_df.to_excel(writer, sheet_name='Полевые_проекты', index=False)
         
-        st.download_button(
-            label="📥 Скачать все полевые проекты",
-            data=output.getvalue(),
-            file_name=f"полевые_проекты_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            type="primary",
-            width='stretch'
-        )
-    else:
-        st.info("Нет данных для выгрузки")
+#         st.download_button(
+#             label="📥 Скачать все полевые проекты",
+#             data=output.getvalue(),
+#             file_name=f"полевые_проекты_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+#             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+#             type="primary",
+#             width='stretch'
+#         )
+#     else:
+#         st.info("Нет данных для выгрузки")
 
 # # ============================================
 # # ВЫГРУЗКА НЕПОЛЕВЫХ ПРОЕКТОВ
