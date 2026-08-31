@@ -792,7 +792,18 @@ class DataVisualizer:
         
         # Проценты
         pf_percent = (fact_total / plan_total * 100) if plan_total > 0 else 0
-        forecast_percent = (fact_date_total / plan_date_total * 100) if plan_date_total > 0 else 0
+        
+        # Расчет прогноза ВП по всем проектам
+        if 'Прогноз, шт.' in project_data.columns:
+            forecast_total = project_data['Прогноз, шт.'].sum()
+        else:
+            forecast_total = 0
+        
+        if include_prodata and prodata_df is not None and not prodata_df.empty:
+            if 'Прогноз, шт.' in prodata_df.columns:
+                forecast_total += prodata_df['Прогноз, шт.'].sum()
+        
+        forecast_percent = (forecast_total / plan_total * 100) if plan_total > 0 else 0
         
         # РЯД 1: План проекта, Факт проекта, Факт ВП, %
         col1, col2, col3 = st.columns(3)
@@ -1470,7 +1481,18 @@ class DataVisualizer:
         
         # Проценты
         pf_percent = (fact_total / plan_total * 100) if plan_total > 0 else 0
-        forecast_percent = (fact_date_total / plan_date_total * 100) if plan_date_total > 0 else 0
+        
+        # Расчет прогноза ВП по всем проектам
+        if 'Прогноз, шт.' in region_data.columns:
+            forecast_total = region_data['Прогноз, шт.'].sum()
+        else:
+            forecast_total = 0
+        
+        if include_prodata and prodata_df is not None and not prodata_df.empty:
+            if 'Прогноз, шт.' in prodata_df.columns:
+                forecast_total += prodata_df['Прогноз, шт.'].sum()
+        
+        forecast_percent = (forecast_total / plan_total * 100) if plan_total > 0 else 0
         
         # РЯД 1: План проекта, Факт проекта, Факт ВП, %
         col1, col2, col3 = st.columns(3)
@@ -2080,7 +2102,17 @@ class DataVisualizer:
         
         # Проценты
         pf_percent = (fact_total / plan_total * 100) if plan_total > 0 else 0
-        forecast_percent = (fact_date_total / plan_date_total * 100) if plan_date_total > 0 else 0
+        # Расчет прогноза ВП по всем проектам
+        if 'Прогноз, шт.' in dsm_data.columns:
+            forecast_total = dsm_data['Прогноз, шт.'].sum()
+        else:
+            forecast_total = 0
+        
+        if include_prodata and prodata_df is not None and not prodata_df.empty:
+            if 'Прогноз, шт.' in prodata_df.columns:
+                forecast_total += prodata_df['Прогноз, шт.'].sum()
+        
+        forecast_percent = (forecast_total / plan_total * 100) if plan_total > 0 else 0
         
         # РЯД 1: План проекта, Факт проекта, Факт ВП, %
         col1, col2, col3 = st.columns(3)
