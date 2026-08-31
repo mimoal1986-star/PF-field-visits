@@ -378,6 +378,25 @@ class VisitCalculator:
                 hierarchy['Дата старта_гугл'] = pd.NaT
                 hierarchy['Дата финиша_гугл'] = pd.NaT
                 hierarchy['Метод подбора дат'] = 'МП'
+
+            # РАСЧЕТ ДАТ НА УРОВНЕ КЛИЕНТА
+            # Сохраняем волновые даты в отдельные колонки (для справки)
+            hierarchy['Дата старта_волна'] = hierarchy['Дата старта']
+            hierarchy['Дата финиша_волна'] = hierarchy['Дата финиша']
+            
+            # Рассчитываем даты на уровне клиента: старт = min, финиш = max
+            if not hierarchy.empty and 'Клиент' in hierarchy.columns:
+                client_dates = hierarchy.groupby('Клиент').agg({
+                    'Дата старта': 'min',
+                    'Дата финиша': 'max'
+                }).reset_index()
+                
+                start_map = dict(zip(client_dates['Клиент'], client_dates['Дата старта']))
+                finish_map = dict(zip(client_dates['Клиент'], client_dates['Дата финиша']))
+                
+                # Применяем клиентские даты (ОНИ ИСПОЛЬЗУЮТСЯ В РАСЧЕТАХ)
+                hierarchy['Дата старта'] = hierarchy['Клиент'].map(start_map).fillna(hierarchy['Дата старта'])
+                hierarchy['Дата финиша'] = hierarchy['Клиент'].map(finish_map).fillna(hierarchy['Дата финиша'])
                 
             
             # Рассчитываем длительность
