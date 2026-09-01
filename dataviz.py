@@ -776,9 +776,11 @@ class DataVisualizer:
         # KPI
         st.markdown("### 📊 Ключевые показатели")
         
-        col_kpi1, col_kpi2, col_kpi3, col_checkbox = st.columns([1, 1, 1, 0.5])
-        with col_checkbox:
+        col_kpi1, col_kpi2, col_kpi3, col_checkbox1, col_checkbox2 = st.columns([1, 1, 1, 0.35, 0.35])
+        with col_checkbox1:
             include_prodata = st.checkbox("📊 Продата", key="planfact_include_prodata")
+        with col_checkbox2:
+            include_prodlenie = st.checkbox("🔄 Продление", key="planfact_include_prodlenie")
         
         prodata_df = st.session_state.cleaned_data.get('prodata_processed', None)
         
@@ -1487,9 +1489,11 @@ class DataVisualizer:
         # KPI
         st.markdown("### 📊 Ключевые показатели")
         
-        col_kpi1, col_kpi2, col_kpi3, col_checkbox = st.columns([1, 1, 1, 0.5])
-        with col_checkbox:
+        col_kpi1, col_kpi2, col_kpi3, col_checkbox1, col_checkbox2 = st.columns([1, 1, 1, 0.35, 0.35])
+        with col_checkbox1:
             include_prodata = st.checkbox("📊 Продата", key="region_include_prodata")
+        with col_checkbox2:
+            include_prodlenie = st.checkbox("🔄 Продление", key="region_include_prodlenie")
         
         prodata_df = st.session_state.cleaned_data.get('prodata_processed', None)
         
@@ -2131,9 +2135,11 @@ class DataVisualizer:
         # KPI
         st.markdown("### 📊 Ключевые показатели")
         
-        col_kpi1, col_kpi2, col_kpi3, col_checkbox = st.columns([1, 1, 1, 0.5])
-        with col_checkbox:
+        col_kpi1, col_kpi2, col_kpi3, col_checkbox1, col_checkbox2 = st.columns([1, 1, 1, 0.35, 0.35])
+        with col_checkbox1:
             include_prodata = st.checkbox("📊 Продата", key="dsm_include_prodata")
+        with col_checkbox2:
+            include_prodlenie = st.checkbox("🔄 Продление", key="dsm_include_prodlenie")
         
         prodata_df = st.session_state.cleaned_data.get('prodata_processed', None)
         
