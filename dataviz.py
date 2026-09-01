@@ -585,6 +585,15 @@ class DataVisualizer:
         # ВСЕГДА группируем (даже если group_cols == ['Клиент'])
         project_data = display_data.groupby(group_cols).agg(existing_agg).reset_index()
 
+        # ============================================
+        # 4.5. ПОДМЕНА ДАТ НА УРОВНЕ КЛИЕНТА (только для выгрузки)
+        # ============================================
+        if group_cols == ['Клиент']:
+            if 'Клиент_дата_старта' in project_data.columns:
+                project_data['Дата старта'] = project_data['Клиент_дата_старта']
+                project_data['Дата финиша'] = project_data['Клиент_дата_финиша']
+                project_data['Длительность'] = project_data['Клиент_длительность']
+
         # === ПЕРЕСЧЕТ ОПЛАТА ПЛАН СРЕДН. ПОСЛЕ АГРЕГАЦИИ ===
         if 'Оплата план' in project_data.columns and 'План проекта, шт.' in project_data.columns:
             mask_plan_positive = project_data['План проекта, шт.'] > 0
@@ -1253,6 +1262,15 @@ class DataVisualizer:
         
         # ВСЕГДА группируем
         region_data = display_data.groupby(group_cols).agg(existing_agg).reset_index()
+
+        # ============================================
+        # 4.5. ПОДМЕНА ДАТ НА УРОВНЕ КЛИЕНТА (только для выгрузки)
+        # ============================================
+        if group_cols == ['Регион']:
+            if 'Клиент_дата_старта' in region_data.columns:
+                region_data['Дата старта'] = region_data['Клиент_дата_старта']
+                region_data['Дата финиша'] = region_data['Клиент_дата_финиша']
+                region_data['Длительность'] = region_data['Клиент_длительность']
         
         # === ПЕРЕСЧЕТ ОПЛАТА ПЛАН СРЕДН. ПОСЛЕ АГРЕГАЦИИ ===
         if 'Оплата план' in region_data.columns and 'План проекта, шт.' in region_data.columns:
@@ -1872,6 +1890,15 @@ class DataVisualizer:
 
         # ВСЕГДА группируем
         dsm_data = display_data.groupby(group_cols).agg(existing_agg).reset_index()
+
+        # ============================================
+        # 4.5. ПОДМЕНА ДАТ НА УРОВНЕ КЛИЕНТА (только для выгрузки)
+        # ============================================
+        if group_cols == ['DSM']:
+            if 'Клиент_дата_старта' in dsm_data.columns:
+                dsm_data['Дата старта'] = dsm_data['Клиент_дата_старта']
+                dsm_data['Дата финиша'] = dsm_data['Клиент_дата_финиша']
+                dsm_data['Длительность'] = dsm_data['Клиент_длительность']
         
         # === ПЕРЕСЧЕТ ОПЛАТА ПЛАН СРЕДН. ПОСЛЕ АГРЕГАЦИИ ===
         if 'Оплата план' in dsm_data.columns and 'План проекта, шт.' in dsm_data.columns:
