@@ -2655,7 +2655,7 @@ class DataVisualizer:
             st.info("ℹ️ Нет данных с Продление = 1")
             return
         
-        # 2. Переименовываем колонки для единообразия
+        # 2. Переименовываем колонки
         rename_cols = {'ЗОД': 'DSM', 'АСС': 'ASM', 'ЭМ': 'RS'}
         filtered_data = filtered_data.rename(columns=rename_cols)
         
@@ -2672,7 +2672,6 @@ class DataVisualizer:
             'Прогноз, шт.': 'sum'
         }
         
-        # Оставляем только существующие колонки
         existing_agg = {k: v for k, v in agg_dict.items() if k in filtered_data.columns}
         
         group_cols = ['ASM', 'Клиент']
@@ -2690,10 +2689,8 @@ class DataVisualizer:
             return
         
         # 6. Рассчитываем метрики
-        # Отклонение = Факт проекта - План на сегодня
         grouped['Отклонение'] = (grouped['Факт проекта, шт.'] - grouped['План на дату, шт.']).round(1)
         
-        # Прогноз ВП, % = Прогноз, шт / План проекта, шт * 100
         mask_plan = grouped['План проекта, шт.'] > 0
         grouped['Прогноз ВП, %'] = 0.0
         grouped.loc[mask_plan, 'Прогноз ВП, %'] = (
@@ -2701,30 +2698,44 @@ class DataVisualizer:
             grouped.loc[mask_plan, 'План проекта, шт.'] * 100
         ).round(1)
         
-        # Факт ВП, % = Факт проекта, шт / План проекта, шт * 100
         grouped['Факт ВП, %'] = 0.0
         grouped.loc[mask_plan, 'Факт ВП, %'] = (
             grouped.loc[mask_plan, 'Факт проекта, шт.'] / 
             grouped.loc[mask_plan, 'План проекта, шт.'] * 100
         ).round(1)
         
-        # План продление = План проекта (так как уже отфильтровали)
         grouped['План продление'] = grouped['План проекта, шт.']
         grouped['Факт продление'] = grouped['Факт проекта, шт.']
         
-        # 7. Формируем итоговую таблицу с Total строками
-        result_rows = []
+        # ============================================
+        # КНОПКА СВЕРНУТЬ/РАЗВЕРНУТЬ КЛИЕНТОВ
+        # ============================================
+        col_btn = st.columns([1])[0]
+        with col_btn:
+            if 'asm_show_clients' not in st.session_state:
+                st.session_state.asm_show_clients = True
+            
+            if st.session_state.asm_show_clients:
+                if st.button("📋 Свернуть клиентов", use_container_width=True):
+                    st.session_state.asm_show_clients = False
+                    st.rerun()
+            else:
+                if st.button("📋 Развернуть клиентов", use_container_width=True):
+                    st.session_state.asm_show_clients = True
+                    st.rerun()
+        # ============================================
         
-        # Получаем список ASM
+        # 7. Формируем итоговую таблицу
+        result_rows = []
         asm_list = sorted(grouped['ASM'].unique())
         
         for asm in asm_list:
             asm_data = grouped[grouped['ASM'] == asm]
             
-            # Total строка для ASM
+            # Total строка
             total_row = {
                 'ASM': asm,
-                'Клиент': 'Total',
+                'Клиент': '⭐ Total',
                 'План проекта, шт.': asm_data['План проекта, шт.'].sum(),
                 'Факт проекта, шт.': asm_data['Факт проекта, шт.'].sum(),
                 'План на сегодня': asm_data['План на дату, шт.'].sum(),
@@ -2735,7 +2746,6 @@ class DataVisualizer:
                 'Факт продление': asm_data['Факт проекта, шт.'].sum()
             }
             
-            # Пересчитываем проценты для Total
             total_plan = total_row['План проекта, шт.']
             if total_plan > 0:
                 total_row['Прогноз ВП, %'] = (asm_data['Прогноз, шт.'].sum() / total_plan * 100).round(1)
@@ -2743,21 +2753,26 @@ class DataVisualizer:
             
             result_rows.append(total_row)
             
-            # Строки клиентов (сортируем по алфавиту)
-            client_data = asm_data.sort_values('Клиент')
-            for _, row in client_data.iterrows():
-                result_rows.append({
-                    'ASM': row['ASM'],
-                    'Клиент': row['Клиент'],
-                    'План проекта, шт.': row['План проекта, шт.'],
-                    'Факт проекта, шт.': row['Факт проекта, шт.'],
-                    'План на сегодня': row['План на дату, шт.'],
-                    'Отклонение': row['Отклонение'],
-                    'Прогноз ВП, %': row['Прогноз ВП, %'],
-                    'Факт ВП, %': row['Факт ВП, %'],
-                    'План продление': row['План продление'],
-                    'Факт продление': row['Факт продление']
-                })
+            # Клиенты (если развернуто)
+            if st.session_state.asm_show_clients:
+                client_data = asm_data.sort_values('Клиент')
+                for _, row in client_data.iterrows():
+                    result_rows.append({
+                        'ASM': row['ASM'],
+                        'Клиент': row['Клиент'],
+                        'План проекта, шт.': row['План проекта, шт.'],
+                        'Факт проекта, шт.': row['Факт проекта, шт.'],
+                        'План на сегодня': row['План на дату, шт.'],
+                        'Отклонение': row['Отклонение'],
+                        'Прогноз ВП, %': row['Прогноз ВП, %'],
+                        'Факт ВП, %': row['Факт ВП, %'],
+                        'План продление': row['План продление'],
+                        'Факт продление': row['Факт продление']
+                    })
+        
+        if not result_rows:
+            st.info("ℹ️ Нет данных для отображения")
+            return
         
         result_df = pd.DataFrame(result_rows)
         
