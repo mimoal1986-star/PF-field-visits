@@ -1028,7 +1028,8 @@ class VisitCalculator:
                     'skip_plan_correction': skip_plan_correction,
                     'Клиент_дата_старта': row.get('Клиент_дата_старта', start_date),
                     'Клиент_дата_финиша': row.get('Клиент_дата_финиша', finish_date),
-                    'Клиент_длительность': row.get('Клиент_длительность', duration)
+                    'Клиент_длительность': row.get('Клиент_длительность', duration),
+                    'Продление': row.get('Продление', 0)
                 })
 
 
