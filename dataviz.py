@@ -578,6 +578,9 @@ class DataVisualizer:
             'Оплата факт/план средн., %': 'first',
             'Оплата средн. в динамике, руб.': 'first',
             'Оплата средн. прогноз, руб.': 'first',
+            'Клиент_дата_старта': 'first',
+            'Клиент_дата_финиша': 'first',
+            'Клиент_длительность': 'first',
         }
         
         existing_agg = {k: v for k, v in agg_columns.items() if k in display_data.columns}
@@ -1249,13 +1252,15 @@ class DataVisualizer:
             'Оплата_поручено': 'sum',
             'Факт проекта_поручено, шт.': 'sum',
             'Факт проекта_не_поручено, шт.': 'sum',
-            # НОВЫЕ КОЛОНКИ
             'Оплата план средн., руб.': 'first',
             'Оплата факт средн., руб.': 'first',
             'Оплата план-факт средн., руб.': 'first',
             'Оплата факт/план средн., %': 'first',
             'Оплата средн. в динамике, руб.': 'first',
             'Оплата средн. прогноз, руб.': 'first',
+            'Клиент_дата_старта': 'first',
+            'Клиент_дата_финиша': 'first',
+            'Клиент_длительность': 'first',
         }
         
         existing_agg = {k: v for k, v in agg_columns.items() if k in display_data.columns}
@@ -1884,6 +1889,9 @@ class DataVisualizer:
             'Оплата факт/план средн., %': 'first',
             'Оплата средн. в динамике, руб.': 'first',
             'Оплата средн. прогноз, руб.': 'first',
+            'Клиент_дата_старта': 'first',
+            'Клиент_дата_финиша': 'first',
+            'Клиент_длительность': 'first',
         }
         
         existing_agg = {k: v for k, v in agg_columns.items() if k in display_data.columns}
