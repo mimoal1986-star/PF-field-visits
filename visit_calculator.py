@@ -156,7 +156,8 @@ class VisitCalculator:
                 'ASM': visits_df['АСС'].fillna('Не указано'),
                 'RS': visits_df['ЭМ'].fillna('Не указано'),
                 'ПО': visits_df['ПО'].fillna('не определено'),
-                'Полевой': visits_df['Полевой']
+                'Полевой': visits_df['Полевой'],
+                'Продление': 0 
             })
             # st.write(f"[DETAIL] Создание DataFrame: {time.time() - start:.2f} сек")
             
@@ -237,6 +238,52 @@ class VisitCalculator:
                     
                     hierarchy['Дата старта'] = hierarchy['Проект'].apply(get_start_date)
                     hierarchy['Дата финиша'] = hierarchy['Проект'].apply(get_finish_date)
+
+                    # ============================================
+                    # ДОБАВЛЕНИЕ КОЛОНКИ "ПРОДЛЕНИЕ" ИЗ GOOGLE-ТАБЛИЦЫ
+                    # ============================================
+                    # Создаем словарь {код_проекта: Продление}
+                    prodlenie_mapping = {}
+                    if google_df is not None and not google_df.empty:
+                        code_col = None
+                        prodlenie_col = 'Продление'
+                        
+                        # Ищем колонку с кодом проекта
+                        for col in google_df.columns:
+                            if col in ['Код проекта RU00.000.00.01SVZ24', 'Код проекта']:
+                                code_col = col
+                                break
+                        
+                        if code_col is not None and prodlenie_col in google_df.columns:
+                            for _, row in google_df.iterrows():
+                                code = str(row.get(code_col, '')).strip()
+                                if code and code not in ['nan', 'None', '']:
+                                    prodlenie_value = row.get(prodlenie_col, 0)
+                                    # Если значение не число, преобразуем в int
+                                    try:
+                                        prodlenie_value = int(prodlenie_value)
+                                    except:
+                                        prodlenie_value = 0
+                                    prodlenie_mapping[code] = prodlenie_value
+                            
+                            # Функция для получения Продление по коду проекта (с учетом составных кодов)
+                            def get_prodlenie(project_code):
+                                code_str = str(project_code)
+                                # Если есть слеш — разделяем и ищем по частям
+                                if '/' in code_str:
+                                    parts = code_str.split('/')
+                                    for part in parts:
+                                        part = part.strip()
+                                        if part in prodlenie_mapping:
+                                            return prodlenie_mapping[part]
+                                # Прямое совпадение
+                                return prodlenie_mapping.get(code_str, 0)
+                            
+                            hierarchy['Продление'] = hierarchy['Проект'].apply(get_prodlenie)
+                        else:
+                            st.warning("⚠️ Не найдены колонки для маппинга 'Продление' в Google-таблице")
+                    else:
+                        st.warning("⚠️ Google-таблица не загружена, колонка 'Продление' заполнена 0")
                     
                     # Если дат нет, ставим первый и последний день месяца
                     if 'plan_calc_params' in st.session_state:
