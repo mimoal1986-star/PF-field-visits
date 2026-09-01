@@ -175,6 +175,43 @@ def process_all_data(settings_manager=None, force_recalc=False):
         st.session_state.cleaned_data['сервизория'] = google_with_field
         st.session_state.debug_times.append(f"[DEBUG] Очистка: {time.time() - start:.2f} сек")
         start = time.time()
+
+        # ============================================
+        # ПАРСИНГ КОЛОНКИ "ПРОДЛЕНИЕ"
+        # ============================================
+        # Извлекаем значение колонки "вводные запрошены / вводные получены, готовится старт / стартовал"
+        # Если значение после приведения к нижнему регистру и сжатия пробелов == "продление" → 1, иначе 0
+        
+        google_df = st.session_state.cleaned_data['сервизория']
+        
+        # Ищем колонку с названием "вводные запрошены / вводные получены, готовится старт / стартовал"
+        status_col = None
+        for col in google_df.columns:
+            if col == 'вводные запрошены / вводные получены, готовится старт / стартовал':
+                status_col = col
+                break
+        
+        if status_col is not None:
+            # Функция для парсинга значения
+            def parse_prodlenie(value):
+                if pd.isna(value):
+                    return 0
+                # Приводим к строке, нижнему регистру, сжимаем пробелы
+                val_str = str(value).strip().lower()
+                # Сжимаем множественные пробелы в один
+                val_str = ' '.join(val_str.split())
+                # Сравниваем с "продление"
+                return 1 if val_str == 'продление' else 0
+            
+            google_df['Продление'] = google_df[status_col].apply(parse_prodlenie)
+        else:
+            # Если колонка не найдена — создаем колонку с нулями
+            st.warning("⚠️ Колонка 'вводные запрошены / вводные получены, готовится старт / стартовал' не найдена в Google-таблице. Колонка 'Продление' заполнена 0.")
+            google_df['Продление'] = 0
+        
+        # Сохраняем обратно
+        st.session_state.cleaned_data['сервизория'] = google_df
+        # ============================================
         
 
         # ОБРАБОТКА ПОРТАЛА (CHECKER) - ЕСЛИ ЗАГРУЖЕН
