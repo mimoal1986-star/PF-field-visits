@@ -2836,20 +2836,37 @@ class DataVisualizer:
         
         result_df = pd.DataFrame(result_rows)
         
-        # 11. Кнопка свернуть/развернуть
-        col_btn = st.columns([1])[0]
-        with col_btn:
-            if 'asm_show_clients' not in st.session_state:
-                st.session_state.asm_show_clients = True
+        # ============================================
+        # 11. ЧЕК-БОКСЫ ДЛЯ УПРАВЛЕНИЯ ОТОБРАЖЕНИЕМ
+        # ============================================
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Чек-бокс для показа только продления
+            show_only_prodlenie = st.checkbox(
+                "📋 Только продление",
+                value=st.session_state.get('asm_show_only_prodlenie', False),
+                key="asm_show_only_prodlenie",
+                help="Показывать только строки, где План продление > 0"
+            )
+        
+        with col2:
+            # Чек-бокс для развертывания клиентов (вместо кнопки)
+            show_clients = st.checkbox(
+                "📋 Развернуть клиентов",
+                value=st.session_state.get('asm_show_clients', True),
+                key="asm_show_clients",
+                help="Показывать клиентов внутри ASM"
+            )
+        
+        # === ПРИМЕНЯЕМ ФИЛЬТР ПО ПРОДЛЕНИЮ ===
+        if show_only_prodlenie:
+            # Оставляем только строки, где План продление > 0
+            result_df = result_df[result_df['План продление'] > 0].copy()
             
-            if st.session_state.asm_show_clients:
-                if st.button("📋 Свернуть клиентов", use_container_width=True):
-                    st.session_state.asm_show_clients = False
-                    st.rerun()
-            else:
-                if st.button("📋 Развернуть клиентов", use_container_width=True):
-                    st.session_state.asm_show_clients = True
-                    st.rerun()
+            if result_df.empty:
+                st.info("ℹ️ Нет данных с План продление > 0")
+                return
         
         # 12. Отображаем таблицу
         st.dataframe(
