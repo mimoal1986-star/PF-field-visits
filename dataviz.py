@@ -2806,7 +2806,7 @@ class DataVisualizer:
                 continue
             
             # Добавляем строку ASM Total
-            result_rows.append(create_summary_row(f'▫️ Итого: {asm}', asm_data))
+            result_rows.append(create_summary_row(f'▫️ {asm}', asm_data))
             
             # Клиенты внутри ASM (если развернуто)
             if st.session_state.get('asm_show_clients', True):
