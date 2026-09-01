@@ -504,6 +504,16 @@ class DataVisualizer:
             display_data = st.session_state.planfact_filtered_data
         else:
             display_data = base_data['raw_data']
+
+        # ============================================
+        # ФИЛЬТР ПО КОЛОНКЕ "ПРОДЛЕНИЕ"
+        # ============================================
+        if st.session_state.get('planfact_include_prodlenie', False):
+            if 'Продление' in display_data.columns:
+                display_data = display_data[display_data['Продление'] == 1]
+            else:
+                st.warning("⚠️ Колонка 'Продление' не найдена в данных")
+        # ============================================
         
         # ============================================
         # 4. РАЗВЕРТКА И ОТОБРАЖЕНИЕ
@@ -581,6 +591,7 @@ class DataVisualizer:
             'Клиент_дата_старта': 'first',
             'Клиент_дата_финиша': 'first',
             'Клиент_длительность': 'first',
+            'Продление': 'first',
         }
         
         existing_agg = {k: v for k, v in agg_columns.items() if k in display_data.columns}
@@ -1186,6 +1197,16 @@ class DataVisualizer:
             display_data = st.session_state.region_filtered_data
         else:
             display_data = base_data['raw_data']
+
+        # ============================================
+        # ФИЛЬТР ПО КОЛОНКЕ "ПРОДЛЕНИЕ"
+        # ============================================
+        if st.session_state.get('region_include_prodlenie', False):
+            if 'Продление' in display_data.columns:
+                display_data = display_data[display_data['Продление'] == 1]
+            else:
+                st.warning("⚠️ Колонка 'Продление' не найдена в данных")
+        # ============================================
         
         # ============================================
         # 4. РАЗВЕРТКА И ОТОБРАЖЕНИЕ
@@ -1261,6 +1282,7 @@ class DataVisualizer:
             'Клиент_дата_старта': 'first',
             'Клиент_дата_финиша': 'first',
             'Клиент_длительность': 'first',
+            'Продление': 'first',
         }
         
         existing_agg = {k: v for k, v in agg_columns.items() if k in display_data.columns}
@@ -1816,6 +1838,16 @@ class DataVisualizer:
             display_data = st.session_state.dsm_filtered_data
         else:
             display_data = base_data['raw_data']
+
+        # ============================================
+        # ФИЛЬТР ПО КОЛОНКЕ "ПРОДЛЕНИЕ"
+        # ============================================
+        if st.session_state.get('dsm_include_prodlenie', False):
+            if 'Продление' in display_data.columns:
+                display_data = display_data[display_data['Продление'] == 1]
+            else:
+                st.warning("⚠️ Колонка 'Продление' не найдена в данных")
+        # ============================================
         
         # ============================================
         # 4. РАЗВЕРТКА И ОТОБРАЖЕНИЕ
@@ -1892,6 +1924,7 @@ class DataVisualizer:
             'Клиент_дата_старта': 'first',
             'Клиент_дата_финиша': 'first',
             'Клиент_длительность': 'first',
+            'Продление': 'first',
         }
         
         existing_agg = {k: v for k, v in agg_columns.items() if k in display_data.columns}
