@@ -1232,6 +1232,13 @@ with tab2:
                         visits_for_dynamics,
                         st.session_state.plan_calc_params
                     )
+
+                    # ============================================
+                    # Сводная таблица по АСМ
+                    # ============================================
+                    dataviz.create_asm_summary_tab(calculated_data)
+                    # ============================================
+                
                 else:
                     st.warning("⚠️ Нет данных для динамики")
         else:
