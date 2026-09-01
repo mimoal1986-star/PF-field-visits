@@ -768,105 +768,105 @@ def process_all_data(settings_manager=None, force_recalc=False):
                 
                 st.session_state.visit_report['calculated_data'] = final_result
                 
-                # ============================================
-                # 🔍 ОТЛАДОЧНАЯ ВЫГРУЗКА В EXCEL (светофор)
-                # ============================================
-                TARGET_CLIENT = "KARCHER"
+                # # ============================================
+                # # 🔍 ОТЛАДОЧНАЯ ВЫГРУЗКА В EXCEL (светофор)
+                # # ============================================
+                # TARGET_CLIENT = "KARCHER"
                 
-                if not base_data.empty and 'Клиент' in base_data.columns:
-                    client_data_base = base_data[base_data['Клиент'] == TARGET_CLIENT].copy()
+                # if not base_data.empty and 'Клиент' in base_data.columns:
+                #     client_data_base = base_data[base_data['Клиент'] == TARGET_CLIENT].copy()
                     
-                    if not client_data_base.empty:
-                        # Эталон: правильные min/max по клиенту
-                        correct_min_start = client_data_base['Дата старта'].min()
-                        correct_max_finish = client_data_base['Дата финиша'].max()
+                #     if not client_data_base.empty:
+                #         # Эталон: правильные min/max по клиенту
+                #         correct_min_start = client_data_base['Дата старта'].min()
+                #         correct_max_finish = client_data_base['Дата финиша'].max()
                         
-                        # Функция проверки статуса
-                        def check_client_dates(df, level_name):
-                            if df is None or df.empty:
-                                return {'level': level_name, 'status': 'НЕТ ДАННЫХ', 'start': '', 'finish': ''}
+                #         # Функция проверки статуса
+                #         def check_client_dates(df, level_name):
+                #             if df is None or df.empty:
+                #                 return {'level': level_name, 'status': 'НЕТ ДАННЫХ', 'start': '', 'finish': ''}
                             
-                            client_rows = df[df['Клиент'] == TARGET_CLIENT]
-                            if client_rows.empty:
-                                return {'level': level_name, 'status': 'КЛИЕНТ НЕ НАЙДЕН', 'start': '', 'finish': ''}
+                #             client_rows = df[df['Клиент'] == TARGET_CLIENT]
+                #             if client_rows.empty:
+                #                 return {'level': level_name, 'status': 'КЛИЕНТ НЕ НАЙДЕН', 'start': '', 'finish': ''}
                             
-                            has_start = 'Клиент_дата_старта' in client_rows.columns
-                            has_finish = 'Клиент_дата_финиша' in client_rows.columns
+                #             has_start = 'Клиент_дата_старта' in client_rows.columns
+                #             has_finish = 'Клиент_дата_финиша' in client_rows.columns
                             
-                            if not has_start or not has_finish:
-                                return {'level': level_name, 'status': 'НЕТ КОЛОНОК Клиент_дата_*', 'start': '', 'finish': ''}
+                #             if not has_start or not has_finish:
+                #                 return {'level': level_name, 'status': 'НЕТ КОЛОНОК Клиент_дата_*', 'start': '', 'finish': ''}
                             
-                            start_values = client_rows['Клиент_дата_старта'].unique()
-                            finish_values = client_rows['Клиент_дата_финиша'].unique()
+                #             start_values = client_rows['Клиент_дата_старта'].unique()
+                #             finish_values = client_rows['Клиент_дата_финиша'].unique()
                             
-                            start_ok = len(start_values) == 1 and start_values[0] == correct_min_start
-                            finish_ok = len(finish_values) == 1 and finish_values[0] == correct_max_finish
+                #             start_ok = len(start_values) == 1 and start_values[0] == correct_min_start
+                #             finish_ok = len(finish_values) == 1 and finish_values[0] == correct_max_finish
                             
-                            if start_ok and finish_ok:
-                                return {'level': level_name, 'status': '✅ min/max', 'start': str(start_values[0]), 'finish': str(finish_values[0])}
-                            elif start_ok and not finish_ok:
-                                return {'level': level_name, 'status': '⚠️ старт OK, финиш НЕ max', 'start': str(start_values[0]), 'finish': str(finish_values[0])}
-                            elif not start_ok and finish_ok:
-                                return {'level': level_name, 'status': '⚠️ старт НЕ min, финиш OK', 'start': str(start_values[0]), 'finish': str(finish_values[0])}
-                            else:
-                                return {'level': level_name, 'status': '❌ старт НЕ min, финиш НЕ max', 'start': str(start_values[0]), 'finish': str(finish_values[0])}
+                #             if start_ok and finish_ok:
+                #                 return {'level': level_name, 'status': '✅ min/max', 'start': str(start_values[0]), 'finish': str(finish_values[0])}
+                #             elif start_ok and not finish_ok:
+                #                 return {'level': level_name, 'status': '⚠️ старт OK, финиш НЕ max', 'start': str(start_values[0]), 'finish': str(finish_values[0])}
+                #             elif not start_ok and finish_ok:
+                #                 return {'level': level_name, 'status': '⚠️ старт НЕ min, финиш OK', 'start': str(start_values[0]), 'finish': str(finish_values[0])}
+                #             else:
+                #                 return {'level': level_name, 'status': '❌ старт НЕ min, финиш НЕ max', 'start': str(start_values[0]), 'finish': str(finish_values[0])}
                         
-                        # Собираем данные со всех уровней
-                        debug_rows = []
+                #         # Собираем данные со всех уровней
+                #         debug_rows = []
                         
-                        # 1. base_data
-                        debug_rows.append(check_client_dates(base_data, 'base_data (иерархия)'))
+                #         # 1. base_data
+                #         debug_rows.append(check_client_dates(base_data, 'base_data (иерархия)'))
                         
-                        # 2. plan_result
-                        if 'plan_result' in locals() and plan_result is not None:
-                            debug_rows.append(check_client_dates(plan_result, 'plan_result'))
-                        else:
-                            debug_rows.append({'level': 'plan_result', 'status': 'НЕТ ДАННЫХ', 'start': '', 'finish': ''})
+                #         # 2. plan_result
+                #         if 'plan_result' in locals() and plan_result is not None:
+                #             debug_rows.append(check_client_dates(plan_result, 'plan_result'))
+                #         else:
+                #             debug_rows.append({'level': 'plan_result', 'status': 'НЕТ ДАННЫХ', 'start': '', 'finish': ''})
                         
-                        # 3. fact_result
-                        if 'fact_result' in locals() and fact_result is not None:
-                            debug_rows.append(check_client_dates(fact_result, 'fact_result'))
-                        else:
-                            debug_rows.append({'level': 'fact_result', 'status': 'НЕТ ДАННЫХ', 'start': '', 'finish': ''})
+                #         # 3. fact_result
+                #         if 'fact_result' in locals() and fact_result is not None:
+                #             debug_rows.append(check_client_dates(fact_result, 'fact_result'))
+                #         else:
+                #             debug_rows.append({'level': 'fact_result', 'status': 'НЕТ ДАННЫХ', 'start': '', 'finish': ''})
                         
-                        # 4. final_result
-                        if 'final_result' in locals() and final_result is not None:
-                            debug_rows.append(check_client_dates(final_result, 'final_result'))
-                        else:
-                            debug_rows.append({'level': 'final_result', 'status': 'НЕТ ДАННЫХ', 'start': '', 'finish': ''})
+                #         # 4. final_result
+                #         if 'final_result' in locals() and final_result is not None:
+                #             debug_rows.append(check_client_dates(final_result, 'final_result'))
+                #         else:
+                #             debug_rows.append({'level': 'final_result', 'status': 'НЕТ ДАННЫХ', 'start': '', 'finish': ''})
                         
-                        # Создаем DataFrame с результатами
-                        status_df = pd.DataFrame(debug_rows)
+                #         # Создаем DataFrame с результатами
+                #         status_df = pd.DataFrame(debug_rows)
                         
-                        # Добавляем строку с эталоном
-                        etalon_row = pd.DataFrame([{
-                            'level': 'ЭТАЛОН (min/max по волнам)',
-                            'status': '✅ ПРАВИЛЬНЫЕ ДАТЫ',
-                            'start': str(correct_min_start),
-                            'finish': str(correct_max_finish)
-                        }])
-                        status_df = pd.concat([etalon_row, status_df], ignore_index=True)
+                #         # Добавляем строку с эталоном
+                #         etalon_row = pd.DataFrame([{
+                #             'level': 'ЭТАЛОН (min/max по волнам)',
+                #             'status': '✅ ПРАВИЛЬНЫЕ ДАТЫ',
+                #             'start': str(correct_min_start),
+                #             'finish': str(correct_max_finish)
+                #         }])
+                #         status_df = pd.concat([etalon_row, status_df], ignore_index=True)
                         
-                        # Детальные данные по волнам
-                        wave_details = client_data_base[['Клиент', 'Волна', 'Дата старта', 'Дата финиша', 
-                                                         'Дата старта_гугл', 'Дата финиша_гугл',
-                                                         'Клиент_дата_старта', 'Клиент_дата_финиша', 'Клиент_длительность']].copy()
+                #         # Детальные данные по волнам
+                #         wave_details = client_data_base[['Клиент', 'Волна', 'Дата старта', 'Дата финиша', 
+                #                                          'Дата старта_гугл', 'Дата финиша_гугл',
+                #                                          'Клиент_дата_старта', 'Клиент_дата_финиша', 'Клиент_длительность']].copy()
                         
-                        # Сохраняем в Excel
-                        output = BytesIO()
-                        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                            status_df.to_excel(writer, sheet_name='СТАТУСЫ', index=False)
-                            wave_details.to_excel(writer, sheet_name='ВОЛНЫ', index=False)
+                #         # Сохраняем в Excel
+                #         output = BytesIO()
+                #         with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                #             status_df.to_excel(writer, sheet_name='СТАТУСЫ', index=False)
+                #             wave_details.to_excel(writer, sheet_name='ВОЛНЫ', index=False)
                         
-                        st.download_button(
-                            label=f"📥 Скачать отладку для {TARGET_CLIENT}",
-                            data=output.getvalue(),
-                            file_name=f"karcher_debug_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                            type="secondary",
-                            key="download_karcher_debug"
-                        )
-                # ============================================
+                #         st.download_button(
+                #             label=f"📥 Скачать отладку для {TARGET_CLIENT}",
+                #             data=output.getvalue(),
+                #             file_name=f"karcher_debug_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+                #             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                #             type="secondary",
+                #             key="download_karcher_debug"
+                #         )
+                # # ============================================
                 
                 st.session_state.debug_times.append(f"[DEBUG] Метрики: {time.time() - start:.2f} сек")
                 
