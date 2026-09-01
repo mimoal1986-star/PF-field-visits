@@ -765,6 +765,21 @@ def process_all_data(settings_manager=None, force_recalc=False):
                 final_result = visit_calculator._calculate_metrics(
                     fact_result, params, plan_result
                 )
+
+                # ============================================
+                # 🔍 ОТЛАДКА: проверка колонок Клиент_дата_*
+                # ============================================
+                st.write("### 🔍 Проверка колонок в final_result")
+                st.write(f"Колонки: {final_result.columns.tolist()}")
+                
+                client_cols = ['Клиент_дата_старта', 'Клиент_дата_финиша', 'Клиент_длительность']
+                for col in client_cols:
+                    if col in final_result.columns:
+                        st.write(f"✅ Колонка '{col}' ЕСТЬ")
+                        st.dataframe(final_result[['Клиент', 'Волна', col]].head(5))
+                    else:
+                        st.write(f"❌ Колонка '{col}' ОТСУТСТВУЕТ")
+                # ============================================
                 
                 st.session_state.visit_report['calculated_data'] = final_result
                 
