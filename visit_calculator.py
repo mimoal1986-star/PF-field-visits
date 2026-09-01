@@ -239,47 +239,69 @@ class VisitCalculator:
                     hierarchy['Дата старта'] = hierarchy['Проект'].apply(get_start_date)
                     hierarchy['Дата финиша'] = hierarchy['Проект'].apply(get_finish_date)
 
+
                     # ============================================
                     # ДОБАВЛЕНИЕ КОЛОНКИ "ПРОДЛЕНИЕ" ИЗ GOOGLE-ТАБЛИЦЫ
                     # ============================================
-                    # Создаем словарь {код_проекта: Продление}
                     prodlenie_mapping = {}
                     if google_df is not None and not google_df.empty:
                         code_col = None
+                        wave_col = None
                         prodlenie_col = 'Продление'
                         
-                        # Ищем колонку с кодом проекта
+                        # Ищем колонки
                         for col in google_df.columns:
                             if col in ['Код проекта RU00.000.00.01SVZ24', 'Код проекта']:
                                 code_col = col
-                                break
+                            if col in ['Название волны на Чекере/ином ПО', 'Волна']:
+                                wave_col = col
                         
-                        if code_col is not None and prodlenie_col in google_df.columns:
+                        if code_col is not None and wave_col is not None and prodlenie_col in google_df.columns:
                             for _, row in google_df.iterrows():
                                 code = str(row.get(code_col, '')).strip()
+                                wave = str(row.get(wave_col, '')).strip()
                                 if code and code not in ['nan', 'None', '']:
                                     prodlenie_value = row.get(prodlenie_col, 0)
-                                    # Если значение не число, преобразуем в int
                                     try:
                                         prodlenie_value = int(prodlenie_value)
                                     except:
                                         prodlenie_value = 0
-                                    prodlenie_mapping[code] = prodlenie_value
+                                    prodlenie_mapping[(code, wave)] = prodlenie_value
                             
-                            # Функция для получения Продление по коду проекта (с учетом составных кодов)
-                            def get_prodlenie(project_code):
+                            def get_prodlenie(project_code, wave_name):
                                 code_str = str(project_code)
-                                # Если есть слеш — разделяем и ищем по частям
+                                wave_str = str(wave_name)
+                                
+                                # Если волна пустая — ищем только по коду
+                                if wave_str in ['Не указано', '', 'nan', 'None']:
+                                    for (c, w), val in prodlenie_mapping.items():
+                                        if c == code_str:
+                                            return val
+                                    return 0
+                                
+                                # Прямое совпадение по (код, волна)
+                                if (code_str, wave_str) in prodlenie_mapping:
+                                    return prodlenie_mapping[(code_str, wave_str)]
+                                
+                                # Если есть составной код с '/'
                                 if '/' in code_str:
                                     parts = code_str.split('/')
                                     for part in parts:
                                         part = part.strip()
-                                        if part in prodlenie_mapping:
-                                            return prodlenie_mapping[part]
-                                # Прямое совпадение
-                                return prodlenie_mapping.get(code_str, 0)
+                                        if (part, wave_str) in prodlenie_mapping:
+                                            return prodlenie_mapping[(part, wave_str)]
+                                
+                                # Fallback: ищем только по коду (без волны)
+                                for (c, w), val in prodlenie_mapping.items():
+                                    if c == code_str:
+                                        return val
+                                
+                                return 0
                             
-                            hierarchy['Продление'] = hierarchy['Проект'].apply(get_prodlenie)
+                            hierarchy['Продление'] = hierarchy.apply(
+                                lambda row: get_prodlenie(row['Проект'], row['Волна']), 
+                                axis=1
+                            )
                         else:
                             st.warning("⚠️ Не найдены колонки для маппинга 'Продление' в Google-таблице")
                     else:
