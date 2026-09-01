@@ -379,6 +379,39 @@ class VisitCalculator:
                 hierarchy['Дата финиша_гугл'] = pd.NaT
                 hierarchy['Метод подбора дат'] = 'МП'
                 
+            # ============================================
+            # 3. РАСЧЕТ ДАТ НА УРОВНЕ КЛИЕНТА (только для отображения)
+            # ============================================
+            # Создаем колонки с клиентскими датами (min/max по клиенту)
+            # Эти колонки НЕ участвуют в расчетах, только для выгрузки в Excel
+            
+            # Сначала инициализируем колонки-заглушки (на случай, если hierarchy пустой)
+            hierarchy['Клиент_дата_старта'] = hierarchy['Дата старта']
+            hierarchy['Клиент_дата_финиша'] = hierarchy['Дата финиша']
+            hierarchy['Клиент_длительность'] = 0
+            
+            if not hierarchy.empty and 'Клиент' in hierarchy.columns:
+                # Группируем по клиенту и находим min старта и max финиша
+                client_dates = hierarchy.groupby('Клиент').agg({
+                    'Дата старта': 'min',
+                    'Дата финиша': 'max'
+                }).reset_index()
+                
+                # Создаем словари для быстрого маппинга
+                start_map = dict(zip(client_dates['Клиент'], client_dates['Дата старта']))
+                finish_map = dict(zip(client_dates['Клиент'], client_dates['Дата финиша']))
+                
+                # Добавляем колонки с клиентскими датами
+                hierarchy['Клиент_дата_старта'] = hierarchy['Клиент'].map(start_map).fillna(hierarchy['Дата старта'])
+                hierarchy['Клиент_дата_финиша'] = hierarchy['Клиент'].map(finish_map).fillna(hierarchy['Дата финиша'])
+                
+                # Рассчитываем клиентскую длительность
+                hierarchy['Клиент_длительность'] = (
+                    hierarchy['Клиент_дата_финиша'] - hierarchy['Клиент_дата_старта']
+                ).dt.days + 1
+                
+                # Заменяем 0 на 1 для случаев, где даты одинаковые
+                hierarchy['Клиент_длительность'] = hierarchy['Клиент_длительность'].clip(lower=1)    
             
             # Рассчитываем длительность
             start = time.time()
@@ -390,6 +423,8 @@ class VisitCalculator:
                     hierarchy.loc[mask_valid_dates, 'Дата финиша'] - 
                     hierarchy.loc[mask_valid_dates, 'Дата старта']
                 ).dt.days + 1
+
+            
             # st.write(f"[DETAIL] Расчет длительности: {time.time() - start:.2f} сек")
             
             # Сортируем
@@ -935,7 +970,10 @@ class VisitCalculator:
                     'Метод подбора дат': row['Метод подбора дат'],
                     'Дней в периоде': days_in_period,
                     'Дневной план RS, шт.': round(rs_daily_plan, 2),
-                    'skip_plan_correction': skip_plan_correction
+                    'skip_plan_correction': skip_plan_correction,
+                    'Клиент_дата_старта': row.get('Клиент_дата_старта', start_date),
+                    'Клиент_дата_финиша': row.get('Клиент_дата_финиша', finish_date),
+                    'Клиент_длительность': row.get('Клиент_длительность', duration)
                 })
 
 
